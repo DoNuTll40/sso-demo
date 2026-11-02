@@ -290,3 +290,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
 ## 📄 ใบอนุญาตและความปลอดภัย (License & Security)
 โปรเจกต์นี้พัฒนาขึ้นเพื่อใช้เป็นระบบ Single Sign-On ภายในองค์กร ห้ามนำ Client Secret, JWT Secret หรือ Private Key เผยแพร่สู่สาธารณะโดยเด็ดขาด
+
