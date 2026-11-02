@@ -1,0 +1,259 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output        = "../lib/generated/prisma"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+// 1. ตารางผู้ใช้และอุปกรณ์ 2FA
+model User {
+  id           String        @id @default(uuid())
+  username     String        @unique
+  email        String        @unique
+  passwordHash String
+  fullName     String
+  avatarUrl    String?
+  role         String        @default("USER") // USER, ADMIN
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  ownedClients      OAuthClient[]
+  preference        UserPreference?
+  devices           UserDevice[]
+  authSessions      AuthSession[]
+  userSessions      UserSession[]
+  tokens            OAuthToken[]
+  auditLogs         AuditLog[]
+  sessionAccessLogs SessionAccessLog[]
+}
+
+model UserDevice {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceName  String   // เช่น "Galaxy A73 5G"
+  fcmToken    String   // Firebase Push Token
+  publicKey   String   // Public Key (Base64) ที่สร้างจาก Keystore ในมือถือ
+  isVerified  Boolean  @default(false)
+  lastUsedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  challenges   AuthChallenge[]
+  userSessions UserSession[]
+  auditLogs    AuditLog[]
+
+  @@index([userId])
+}
+
+// 2. ตาราง OAuth Clients และ Session การขอสิทธิ์
+model OAuthClient {
+  ownerId       String?
+  owner         User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  id            String        @id @default(uuid())
+  clientId      String        @unique
+  clientSecret  String?       // เก็บ Secret แบบ Hash (null สำหรับ Public Client เช่น Mobile/SPA)
+  clientName    String
+  redirectUris  String[]
+  allowedScopes String[]      @default(["openid", "profile", "email"])
+  isPublic      Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([ownerId])
+
+  sessions          AuthSession[]
+  tokens            OAuthToken[]
+  auditLogs         AuditLog[]
+  sessionAccessLogs SessionAccessLog[]
+}
+
+model AuthSession {
+  id                  String          @id @default(uuid())
+  clientId            String
+  client              OAuthClient     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId              String?
+  user                User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // OAuth 2.0 PKCE Parameters
+  state               String
+  codeChallenge       String?
+  codeChallengeMethod String?         // "S256"
+  scope               String          @default("openid profile email")
+  redirectUri         String
+
+  // สถานะ Authorization Code
+  authorizationCode   String?         @unique
+  status              String          @default("PENDING") // PENDING, AWAITING_2FA, APPROVED, REJECTED, EXPIRED
+
+  // ข้อมูลบริบทการเข้าถึง Session
+  ipAddress           String?
+  userAgent           String?
+  lastAccessedAt      DateTime        @default(now())
+
+  expiresAt           DateTime
+  createdAt           DateTime        @default(now())
+
+  challenges          AuthChallenge[]
+  auditLogs           AuditLog[]
+  sessionAccessLogs   SessionAccessLog[]
+
+  @@index([clientId])
+  @@index([userId])
+  @@index([status])
+}
+
+// 3. ตาราง 2FA Challenge สำหรับแอปมือถือ
+model AuthChallenge {
+  id            String      @id @default(uuid())
+  authSessionId String
+  authSession   AuthSession @relation(fields: [authSessionId], references: [id], onDelete: Cascade)
+  deviceId      String
+  device        UserDevice  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  challengeCode String      // เลข 2 หลักที่แสดงบนหน้าเว็บ (เช่น "84")
+  nonce         String      // สตริงสุ่มป้องกัน Replay Attack
+  status        String      @default("PENDING") // PENDING, APPROVED, REJECTED, EXPIRED
+  ipAddress     String?     // IP ของเครื่องที่ร้องขอหรือตอบกลับ Challenge
+  userAgent     String?
+  respondedAt   DateTime?   // เวลาที่ผู้ใช้กดอนุมัติหรือปฏิเสธบนมือถือ
+  expiresAt     DateTime
+  createdAt     DateTime    @default(now())
+
+  @@index([authSessionId])
+  @@index([deviceId])
+  @@index([status])
+}
+
+// 4. ตารางจัดเก็บ Access Token & Refresh Token
+model OAuthToken {
+  id            String      @id @default(uuid())
+  clientId      String
+  client        OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken   String      @unique
+  refreshToken  String?     @unique
+  scope         String
+  isRevoked     Boolean     @default(false)
+  revokedAt     DateTime?
+  revokedReason String?
+  lastUsedAt    DateTime?
+  ipAddress     String?
+  userAgent     String?
+  expiresAt     DateTime
+  createdAt     DateTime    @default(now())
+
+  @@index([accessToken])
+  @@index([refreshToken])
+  @@index([userId])
+  @@index([clientId])
+}
+
+// 5. ตารางจัดเก็บ SSO User Session (สำหรับจัดการสถานะล็อกอินค้างบนระบบ SSO)
+model UserSession {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionToken  String      @unique
+  deviceId      String?
+  device        UserDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  ipAddress     String?
+  userAgent     String?
+  deviceInfo    String?     // ข้อมูล Browser / OS / Device
+  location      String?     // พิกัดหรือประเทศ/เมือง
+  isActive      Boolean     @default(true)
+  mfaVerified   Boolean     @default(false)
+  mfaVerifiedAt DateTime?
+  lastActiveAt  DateTime    @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String?
+  createdAt     DateTime    @default(now())
+
+  accessLogs    SessionAccessLog[]
+
+  @@index([userId])
+  @@index([sessionToken])
+  @@index([isActive])
+}
+
+// 6. ตารางเก็บ Log การเข้าถึงและเปลี่ยนแปลงสถานะ Session แบบละเอียด (Session Access Trail)
+model SessionAccessLog {
+  id             String       @id @default(uuid())
+  userSessionId  String?
+  userSession    UserSession? @relation(fields: [userSessionId], references: [id], onDelete: SetNull)
+  authSessionId  String?
+  authSession    AuthSession? @relation(fields: [authSessionId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  clientId       String?
+  client         OAuthClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  eventType      String       // เช่น SESSION_CREATED, SESSION_VIEWED, LOGIN_ATTEMPT, 2FA_SENT, 2FA_VERIFIED, CODE_ISSUED, TOKEN_EXCHANGED, SESSION_REVOKED
+  status         String       @default("SUCCESS") // SUCCESS, FAILED, DENIED, PENDING
+  ipAddress      String?
+  userAgent      String?
+  endpoint       String?      // เช่น "/api/v1/oauth/authorize"
+  httpMethod     String?      // GET, POST, PUT, DELETE
+  statusCode     Int?         // 200, 302, 400, 401, 403
+  responseTimeMs Int?         // ระยะเวลาประมวลผล (ms)
+  details        Json?        // รายละเอียดเพิ่มเติม เช่น previousStatus, newStatus, scopes, errorReason
+  createdAt      DateTime     @default(now())
+
+  @@index([userSessionId])
+  @@index([authSessionId])
+  @@index([userId])
+  @@index([clientId])
+  @@index([eventType])
+  @@index([ipAddress])
+  @@index([createdAt])
+}
+
+// 7. ตาราง Audit Log กลางสำหรับเหตุการณ์ความปลอดภัยและกิจกรรมทั้งหมดในระบบ
+model AuditLog {
+  id            String       @id @default(uuid())
+  userId        String?
+  user          User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  clientId      String?
+  client        OAuthClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  authSessionId String?
+  authSession   AuthSession? @relation(fields: [authSessionId], references: [id], onDelete: SetNull)
+  deviceId      String?
+  device        UserDevice?  @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  action        String       // เช่น AUTH_LOGIN_SUCCESS, OAUTH_AUTHORIZE, OAUTH_TOKEN_ISSUED, 2FA_CHALLENGE_APPROVED, DEVICE_PAIRED
+  category      String       @default("AUTH") // AUTH, OAUTH, 2FA, SESSION, DEVICE, ADMIN, SECURITY
+  status        String       @default("SUCCESS") // SUCCESS, FAILURE, WARNING, BLOCKED
+  severity      String       @default("INFO") // INFO, LOW, MEDIUM, HIGH, CRITICAL
+  ipAddress     String?
+  userAgent     String?
+  geoLocation   String?
+  requestMethod String?
+  requestPath   String?
+  statusCode    Int?
+  reason        String?      // สาเหตุกรณีไม่สำเร็จ หรือคำอธิบายเพิ่มเติม
+  metadata      Json?        // ข้อมูล Context แบบละเอียด (JSON)
+  createdAt     DateTime     @default(now())
+
+  @@index([userId])
+  @@index([clientId])
+  @@index([authSessionId])
+  @@index([deviceId])
+  @@index([action])
+  @@index([category])
+  @@index([status])
+  @@index([severity])
+  @@index([ipAddress])
+  @@index([createdAt])
+}
+
+model UserPreference {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  settings Json
+  updatedAt DateTime @updatedAt
+}
+

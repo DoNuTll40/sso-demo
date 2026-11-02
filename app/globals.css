@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: var(--font-noto-thai), sans-serif;
+    background-color: #09090b;
+    color: #f4f4f5;
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Account-specific workspace preferences. */
+[data-console] { --console-accent: #e4e4e7; --console-tint: rgba(228,228,231,.07); }
+[data-console][data-accent="indigo"] { --console-accent: #a5b4fc; --console-tint: rgba(129,140,248,.12); }
+[data-console][data-accent="emerald"] { --console-accent: #6ee7b7; --console-tint: rgba(52,211,153,.10); }
+.console-accent { color: var(--console-accent); }
+.console-active { color: var(--console-accent); background: var(--console-tint); }
+.console-toggle { background: var(--console-accent); }
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 50px; padding: 12px 0; border-bottom: 1px solid rgba(63,63,70,.4); }
+.setting-row:last-child { border-bottom: 0; }
+[data-console][data-contrast="high"] .text-zinc-500, [data-console][data-contrast="high"] .text-zinc-600 { color: #a1a1aa; }
+[data-console][data-contrast="high"] .border-zinc-800 { border-color: #52525b; }
+[data-console][data-motion="off"] *, [data-console][data-motion="off"] *::before, [data-console][data-motion="off"] *::after { animation: none !important; transition-duration: 0s !important; scroll-behavior: auto !important; }
+[data-console] :focus-visible { outline: 2px solid var(--console-accent); outline-offset: 3px; }
+@media (max-width: 640px) { .setting-row { align-items: flex-start; flex-direction: column; gap: 8px; padding: 12px 0; } }
+
+/* Keep the authentication card compact across development CSS refreshes. */
+[data-auth-challenge] { display:flex; min-height:100vh; align-items:center; justify-content:center; padding:24px 16px; background:#09090b; }
+[data-auth-challenge] > div { width:100%; max-width:360px; }
+[data-auth-challenge] .challenge-card { padding:20px; border:1px solid #27272a; border-radius:12px; background:#0c0c0e; }
+[data-auth-challenge] h1 { font-size:15px; line-height:1.6; }
+[data-auth-challenge] .challenge-card > p { margin-top:8px; font-size:12px; line-height:1.7; }
+[data-auth-challenge] .challenge-restart { display:flex; align-items:center; justify-content:center; height:36px; margin-top:20px; border-radius:6px; font-size:12px; background:#f4f4f5; color:#09090b; }
+
+.recovery-panel { border:1px solid #27272a; border-radius:12px; padding:16px; background:#0c0c0e; }
+.recovery-panel summary { cursor:pointer; font-size:13px; font-weight:600; color:#e4e4e7; }
+.recovery-panel > p { font-size:11px; line-height:1.7; margin:10px 0; color:#a1a1aa; }
+.recovery-panel .recovery-form { display:flex; align-items:center; flex-wrap:wrap; gap:8px; max-width:480px; }
+.recovery-panel .recovery-form input { flex:1 1 220px; min-width:0; height:32px; padding:0 10px; border:1px solid #27272a; border-radius:6px; background:#09090b; font-size:12px; }
+.recovery-panel .recovery-form button { flex:0 0 auto; width:auto; height:32px; margin:0; padding:0 12px; border-radius:6px; font-size:12px; }
+.recovery-panel pre { display:grid; padding:12px; max-width:480px; border:1px solid #27272a; border-radius:6px; background:#09090b; font-size:12px; line-height:1.8; overflow-x:auto; }
+.recovery-panel[data-mode="challenge"] { margin-top:20px; padding:16px 0 0; border:0; border-top:1px solid #27272a; border-radius:0; }
+.recovery-panel[data-mode="challenge"] .recovery-form input { flex-basis:100%; }

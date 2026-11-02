@@ -1,0 +1,43 @@
+{
+  "name": "web-next",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test:sso": "node tests/sso-integration.cjs",
+    "test:ownership": "node tests/owner-preferences.cjs",
+    "db:ownership": "node scripts/apply-owner-preferences.cjs",
+    "docs:generate": "node scripts/build-api-docs.cjs && node scripts/build-postman.cjs",
+    "test:docs": "node tests/api-docs.cjs"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@apidevtools/swagger-parser": "^13.1.0",
+    "@heroui/react": "^2.7.8",
+    "@prisma/client": "^6.5.0",
+    "@scalar/nextjs-api-reference": "^0.12.15",
+    "bcryptjs": "^3.0.2",
+    "framer-motion": "^11.18.2",
+    "gsap": "^3.12.7",
+    "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^1.16.0",
+    "next": "^15.2.3",
+    "nextjs-toploader": "^3.9.17",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "swagger-ui-dist": "^5.34.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "prisma": "^6.5.0",
+    "tailwindcss": "^3.4.17"
+  }
+}

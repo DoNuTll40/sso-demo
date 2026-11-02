@@ -1,0 +1,4563 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SSO Core API",
+    "version": "1.0.0",
+    "description": "Contract reviewed against the local route handlers. Cookie-authenticated browser APIs, OAuth 2.0 Authorization Code + PKCE, and signed mobile APIs. No production credentials are included. Browser OAuth navigation must preserve state and PKCE in the relying party; the callback helper is diagnostic only. See /docs for integration guides and limitations."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Current SSO origin"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Discovery"
+    },
+    {
+      "name": "OAuth"
+    },
+    {
+      "name": "Authentication"
+    },
+    {
+      "name": "Recovery"
+    },
+    {
+      "name": "Devices"
+    },
+    {
+      "name": "Sessions"
+    },
+    {
+      "name": "Activity"
+    },
+    {
+      "name": "Administration"
+    },
+    {
+      "name": "Preferences"
+    },
+    {
+      "name": "Diagnostics"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sso_session",
+        "description": "HttpOnly cookie issued by login or successful challenge polling. Browser clients use same-origin cookies; do not paste into frontend JavaScript."
+      },
+      "challengeCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sso_challenge",
+        "description": "Short-lived browser proof issued after password verification. Bound to the challenge ID."
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "clientBasic": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Confidential client authentication for the token endpoint; public clients use PKCE without a secret."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "error_description": {
+            "type": "string"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Database UUID; distinct from OAuth client_id.",
+            "example": "{{id}}"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "ADMIN"
+            ]
+          },
+          "avatarUrl": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Device": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Database UUID; distinct from OAuth client_id.",
+            "example": "{{id}}"
+          },
+          "deviceName": {
+            "type": "string"
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publicKey": {
+            "type": "string",
+            "description": "ed25519: followed by 64 lowercase hex characters"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Client": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Database UUID; distinct from OAuth client_id.",
+            "example": "{{id}}"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "redirectUris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowedScopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "hasSecret": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "token_type": {
+            "type": "string"
+          },
+          "access_token": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "id_token": {
+            "type": "string"
+          },
+          "expires_in": {
+            "type": "integer"
+          },
+          "scope": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/.well-known/openid-configuration": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "OIDC discovery",
+        "operationId": "get__well_known_openid_configuration",
+        "description": "Currently advertises HS256 ID tokens and S256 PKCE. Back-channel logout is not advertised or implemented.",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "issuer": {
+                      "type": "string"
+                    },
+                    "authorization_endpoint": {
+                      "type": "string"
+                    },
+                    "token_endpoint": {
+                      "type": "string"
+                    },
+                    "userinfo_endpoint": {
+                      "type": "string"
+                    },
+                    "jwks_uri": {
+                      "type": "string"
+                    },
+                    "response_types_supported": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "id_token_signing_alg_values_supported": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "code_challenge_methods_supported": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Discovery CORS preflight",
+        "operationId": "options__well_known_openid_configuration",
+        "description": "",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No content"
+          }
+        }
+      }
+    },
+    "/.well-known/jwks.json": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Public signing keys",
+        "operationId": "get__well_known_jwks_json",
+        "description": "Exports configured RSA public key only. May return an empty keys array. These RSA keys do not verify the current HS256 ID tokens.",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "keys": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kty": {
+                            "type": "string"
+                          },
+                          "kid": {
+                            "type": "string"
+                          },
+                          "alg": {
+                            "type": "string"
+                          },
+                          "use": {
+                            "type": "string"
+                          },
+                          "n": {
+                            "type": "string"
+                          },
+                          "e": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "options": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Discovery CORS preflight",
+        "operationId": "options__well_known_jwks_json",
+        "description": "",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No content"
+          }
+        }
+      }
+    },
+    "/api/v1/oauth/authorize": {
+      "get": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "Start Authorization Code flow",
+        "operationId": "get__api_v1_oauth_authorize",
+        "description": "Browser navigation endpoint. Validates registered redirect URI and scopes; public clients require PKCE. Creates an AuthSession and redirects to login/consent. state must be random, stored by the client, and verified at callback. Use a new verifier (43–128 chars) per attempt; S256 = base64url(SHA256(verifier)).",
+        "security": [],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "redirect_uri",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "response_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "code"
+              ],
+              "default": "code"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Space-separated scopes",
+              "example": "openid profile email"
+            }
+          },
+          {
+            "name": "code_challenge",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code_challenge_method",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "S256"
+              ],
+              "default": "S256"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Browser redirect",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Next browser step"
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/oauth/token": {
+      "post": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "Exchange code or rotate refresh token",
+        "operationId": "post__api_v1_oauth_token",
+        "description": "Accepts JSON and application/x-www-form-urlencoded. authorization_code requires code, redirect_uri and client identity; code_verifier required if PKCE was used. Confidential clients require secret via Basic or body. refresh_token requires refresh_token and matching client credentials; rotates refresh tokens (replace stored values). ID token is returned on authorization_code, not refresh. Authorization codes are single-use.",
+        "security": [
+          {
+            "clientBasic": []
+          },
+          {}
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token_type": {
+                      "type": "string"
+                    },
+                    "access_token": {
+                      "type": "string"
+                    },
+                    "refresh_token": {
+                      "type": "string"
+                    },
+                    "id_token": {
+                      "type": "string"
+                    },
+                    "expires_in": {
+                      "type": "integer"
+                    },
+                    "scope": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "grant_type": {
+                    "type": "string",
+                    "enum": [
+                      "authorization_code",
+                      "refresh_token"
+                    ]
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "redirect_uri": {
+                    "type": "string"
+                  },
+                  "client_id": {
+                    "type": "string"
+                  },
+                  "client_secret": {
+                    "type": "string",
+                    "format": "password",
+                    "writeOnly": true
+                  },
+                  "code_verifier": {
+                    "type": "string"
+                  },
+                  "refresh_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "grant_type"
+                ]
+              },
+              "example": {
+                "grant_type": "authorization_code",
+                "code": "{{authorizationCode}}",
+                "redirect_uri": "{{redirectUri}}",
+                "client_id": "{{clientId}}",
+                "client_secret": "{{clientSecret}}",
+                "code_verifier": "{{codeVerifier}}"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "grant_type": {
+                    "type": "string",
+                    "enum": [
+                      "authorization_code",
+                      "refresh_token"
+                    ]
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "redirect_uri": {
+                    "type": "string"
+                  },
+                  "client_id": {
+                    "type": "string"
+                  },
+                  "client_secret": {
+                    "type": "string",
+                    "format": "password",
+                    "writeOnly": true
+                  },
+                  "code_verifier": {
+                    "type": "string"
+                  },
+                  "refresh_token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "grant_type"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/oauth/userinfo": {
+      "get": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "Read profile from access token",
+        "operationId": "get__api_v1_oauth_userinfo",
+        "description": "Validates signature, token record, expiry and revocation; fields depend on granted scopes.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sub": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "preferred_username": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "email_verified": {
+                      "type": "boolean"
+                    },
+                    "picture": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/oauth/consent": {
+      "get": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "Read consent request",
+        "operationId": "get__api_v1_oauth_consent",
+        "description": "Authenticated account must own the AuthSession. Previously approved means an earlier approval covers the requested scopes and same callback; currently still requires explicit confirmation.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessionId": {
+                      "type": "string",
+                      "description": "Database UUID; distinct from OAuth client_id.",
+                      "example": "{{id}}"
+                    },
+                    "previouslyApproved": {
+                      "type": "boolean"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "redirectUri": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "scopes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "client": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "clientId": {
+                          "type": "string"
+                        },
+                        "clientName": {
+                          "type": "string"
+                        },
+                        "redirectUris": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "allowedScopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "isPublic": {
+                          "type": "boolean"
+                        },
+                        "hasSecret": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "USER",
+                            "ADMIN"
+                          ]
+                        },
+                        "avatarUrl": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "Allow or deny access",
+        "operationId": "post__api_v1_oauth_consent",
+        "description": "Requires AWAITING_CONSENT and unexpired session owned by caller. allow produces code/state callback; deny produces error=access_denied callback. Navigate the browser to redirectUrl.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "redirectUrl": {
+                      "type": "string"
+                    },
+                    "authorizationCode": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict or request already consumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionId": {
+                    "type": "string",
+                    "description": "Database UUID; distinct from OAuth client_id.",
+                    "example": "{{id}}"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "allow",
+                      "deny"
+                    ]
+                  }
+                },
+                "required": [
+                  "sessionId",
+                  "action"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login-context": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Name of requesting application",
+        "operationId": "get__api_v1_auth_login_context",
+        "description": "Public, minimal app name only. Rejects expired/completed sessions; returns no account data.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clientName": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Verify password and start sign-in",
+        "operationId": "post__api_v1_auth_login",
+        "description": "Omit session_id for direct SSO portal login. With verified device: returns challenge and sets sso_challenge; poll challenge-status. Without verified device: creates sso_session and returns next step. OAuth clients must begin at authorize; never fabricate an AuthSession.",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "APPROVED",
+                        "CONSENT_REQUIRED",
+                        "CHALLENGE_REQUIRED"
+                      ]
+                    },
+                    "redirectUrl": {
+                      "type": "string"
+                    },
+                    "challengeId": {
+                      "type": "string",
+                      "description": "Database UUID; distinct from OAuth client_id.",
+                      "example": "{{id}}"
+                    },
+                    "sessionId": {
+                      "type": "string",
+                      "description": "Database UUID; distinct from OAuth client_id.",
+                      "example": "{{id}}"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "USER",
+                            "ADMIN"
+                          ]
+                        },
+                        "avatarUrl": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "Username or email",
+                    "example": "{{username}}"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "writeOnly": true
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "description": "Optional external OAuth AuthSession ID",
+                    "example": "{{sessionId}}"
+                  },
+                  "sessionId": {
+                    "type": "string",
+                    "description": "Alias for session_id"
+                  }
+                },
+                "required": [
+                  "username",
+                  "password"
+                ]
+              },
+              "example": {
+                "username": "{{username}}",
+                "password": "{{password}}",
+                "session_id": "{{sessionId}}"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Current signed-in account",
+        "operationId": "get__api_v1_auth_me",
+        "description": "",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "USER",
+                            "ADMIN"
+                          ]
+                        },
+                        "avatarUrl": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Log out current SSO browser",
+        "operationId": "post__api_v1_auth_logout",
+        "description": "Revokes current SSO session when present and deletes sso_session cookie. Idempotent. This endpoint does not itself implement back-channel logout.",
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {}
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/challenge-status": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Poll browser challenge and finish login",
+        "operationId": "get__api_v1_auth_challenge_status",
+        "description": "Poll every 2 seconds using the browser cookie from password step. On APPROVED sets sso_session and returns redirectUrl. Expired/rejected challenges require a fresh login.",
+        "security": [
+          {
+            "challengeCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "challengeId": {
+                      "type": "string",
+                      "description": "Database UUID; distinct from OAuth client_id.",
+                      "example": "{{id}}"
+                    },
+                    "challengeCode": {
+                      "type": "string"
+                    },
+                    "deviceName": {
+                      "type": "string"
+                    },
+                    "clientName": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "redirectUrl": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Approve or reject signed challenge",
+        "operationId": "post__api_v1_auth_challenge_status",
+        "description": "Ed25519 payload: JSON.stringify([\"sso-2fa-v1\", challengeId, nonce, deviceId, action, String(selectedCode ?? \"\")]). Nonce comes from signed device polling. Wrong matching code rejects the challenge. The browser code is never an authorization credential on its own. verify-2fa is an alias of challenge-status POST.",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict or request already consumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "challengeId": {
+                    "type": "string",
+                    "example": "{{challengeId}}"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "APPROVE",
+                      "REJECT"
+                    ]
+                  },
+                  "selectedCode": {
+                    "type": "string",
+                    "description": "Two digits required for APPROVE; empty string for REJECT",
+                    "example": "{{challengeCode}}"
+                  },
+                  "deviceId": {
+                    "type": "string",
+                    "description": "Registered device UUID",
+                    "example": "{{deviceId}}"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "description": "Ed25519 signature of the exact UTF-8 JSON array, lowercase hex (128 characters).",
+                    "example": "{{signature}}"
+                  }
+                },
+                "required": [
+                  "challengeId",
+                  "action",
+                  "deviceId",
+                  "signature"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/verify-2fa": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Approve or reject signed challenge",
+        "operationId": "post__api_v1_devices_verify_2fa",
+        "description": "Ed25519 payload: JSON.stringify([\"sso-2fa-v1\", challengeId, nonce, deviceId, action, String(selectedCode ?? \"\")]). Nonce comes from signed device polling. Wrong matching code rejects the challenge. The browser code is never an authorization credential on its own. verify-2fa is an alias of challenge-status POST.",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict or request already consumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "challengeId": {
+                    "type": "string",
+                    "example": "{{challengeId}}"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "APPROVE",
+                      "REJECT"
+                    ]
+                  },
+                  "selectedCode": {
+                    "type": "string",
+                    "description": "Two digits required for APPROVE; empty string for REJECT",
+                    "example": "{{challengeCode}}"
+                  },
+                  "deviceId": {
+                    "type": "string",
+                    "description": "Registered device UUID",
+                    "example": "{{deviceId}}"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "description": "Ed25519 signature of the exact UTF-8 JSON array, lowercase hex (128 characters).",
+                    "example": "{{signature}}"
+                  }
+                },
+                "required": [
+                  "challengeId",
+                  "action",
+                  "deviceId",
+                  "signature"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/recovery": {
+      "post": {
+        "tags": [
+          "Recovery"
+        ],
+        "summary": "Generate or consume recovery codes",
+        "operationId": "post__api_v1_auth_recovery",
+        "description": "Two distinct bodies: {action:\"generate\",password} requires an authenticated session and correct password; creates 10 codes, shown once, replacing all old codes. {challengeId,code} requires password-step sso_challenge cookie; consumes code exactly once and approves pending challenge. Poll challenge-status afterward to finish login. Five failed recovery attempts per account in 15 minutes trigger 429.",
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {
+            "challengeCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "codes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "generate"
+                    ]
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "writeOnly": true
+                  },
+                  "challengeId": {
+                    "type": "string",
+                    "description": "Database UUID; distinct from OAuth client_id.",
+                    "example": "{{id}}"
+                  },
+                  "code": {
+                    "type": "string",
+                    "description": "One unused 20-character recovery code"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/pair": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "List devices and issue pairing QR",
+        "operationId": "get__api_v1_devices_pair",
+        "description": "Returns all devices including revoked ones. Pairing token is one-use and valid 10 minutes. QR endpoint uses configured origin or development LAN IP. Treat token as sensitive.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "USER",
+                            "ADMIN"
+                          ]
+                        },
+                        "avatarUrl": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "devices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Database UUID; distinct from OAuth client_id.",
+                            "example": "{{id}}"
+                          },
+                          "deviceName": {
+                            "type": "string"
+                          },
+                          "isVerified": {
+                            "type": "boolean"
+                          },
+                          "lastUsedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "publicKey": {
+                            "type": "string",
+                            "description": "ed25519: followed by 64 lowercase hex characters"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    },
+                    "qrPayload": {
+                      "type": "object",
+                      "properties": {
+                        "endpoint": {
+                          "type": "string"
+                        },
+                        "pairingToken": {
+                          "type": "string"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Consume pairing QR",
+        "operationId": "post__api_v1_devices_pair",
+        "description": "Requires signed pairing token from authenticated browser. No session cookie required on phone. Missing/invalid Expo token stored as empty; registration alone does not prove online reachability.",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "device": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "deviceName": {
+                          "type": "string"
+                        },
+                        "isVerified": {
+                          "type": "boolean"
+                        },
+                        "lastUsedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "publicKey": {
+                          "type": "string",
+                          "description": "ed25519: followed by 64 lowercase hex characters"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict or request already consumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pairingToken": {
+                    "type": "string",
+                    "example": "{{pairingToken}}"
+                  },
+                  "userId": {
+                    "type": "string",
+                    "description": "Database UUID; distinct from OAuth client_id.",
+                    "example": "{{id}}"
+                  },
+                  "deviceName": {
+                    "type": "string",
+                    "description": "Display name",
+                    "example": "My phone"
+                  },
+                  "publicKey": {
+                    "type": "string",
+                    "description": "ed25519:<64 lowercase hex>",
+                    "example": "{{publicKey}}"
+                  },
+                  "pushToken": {
+                    "type": "string",
+                    "description": "ExpoPushToken[...] or ExponentPushToken[...]"
+                  },
+                  "fcmToken": {
+                    "type": "string",
+                    "description": "Legacy alias for pushToken"
+                  }
+                },
+                "required": [
+                  "pairingToken",
+                  "deviceName",
+                  "publicKey"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Unpair or remove own device",
+        "operationId": "delete__api_v1_devices_pair",
+        "description": "Verified device: mark unverified, clear push token, reject pending challenges and revoke device-linked sessions. Already unverified device: permanently remove record. Only owner may act.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "UNPAIRED",
+                        "DELETED"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/challenges": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Signed device challenge polling",
+        "operationId": "post__api_v1_devices_challenges",
+        "description": "Sign exact JSON.stringify([\"sso-poll-v1\", deviceId, timestamp]) using the device private Ed25519 key. timestamp is milliseconds within ±60 seconds. At most 5 live pending challenges; returns options, not the selected answer.",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "challenges": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Database UUID; distinct from OAuth client_id.",
+                            "example": "{{id}}"
+                          },
+                          "nonce": {
+                            "type": "string"
+                          },
+                          "serviceName": {
+                            "type": "string"
+                          },
+                          "ipAddress": {
+                            "type": "string"
+                          },
+                          "browser": {
+                            "type": "string"
+                          },
+                          "requestedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "expiresAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "matchingOptions": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "deviceId": {
+                    "type": "string",
+                    "description": "Registered device UUID",
+                    "example": "{{deviceId}}"
+                  },
+                  "timestamp": {
+                    "type": "integer",
+                    "description": "Unix milliseconds, within 60 seconds of server time"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "description": "Ed25519 signature of the exact UTF-8 JSON array, lowercase hex (128 characters).",
+                    "example": "{{signature}}"
+                  }
+                },
+                "required": [
+                  "deviceId",
+                  "timestamp",
+                  "signature"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/account": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Signed mobile account overview",
+        "operationId": "post__api_v1_devices_account",
+        "description": "Sign exact JSON.stringify([\"sso-account-v1\", deviceId, timestamp]) using the device private Ed25519 key. timestamp is milliseconds within ±60 seconds. Paired account only. Up to 100 active tokens aggregated into apps, 50 history events, 20 active sessions; bearer tokens excluded.",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "USER",
+                            "ADMIN"
+                          ]
+                        },
+                        "avatarUrl": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "device": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "pairedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "apps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Database UUID; distinct from OAuth client_id.",
+                            "example": "{{id}}"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "lastUsedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Database UUID; distinct from OAuth client_id.",
+                            "example": "{{id}}"
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "ipAddress": {
+                            "type": "string"
+                          },
+                          "client": {
+                            "type": "object",
+                            "properties": {
+                              "clientName": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "sessions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Database UUID; distinct from OAuth client_id.",
+                            "example": "{{id}}"
+                          },
+                          "deviceInfo": {
+                            "type": "string"
+                          },
+                          "ipAddress": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "lastActiveAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "mfaVerified": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "deviceId": {
+                    "type": "string",
+                    "description": "Registered device UUID",
+                    "example": "{{deviceId}}"
+                  },
+                  "timestamp": {
+                    "type": "integer",
+                    "description": "Unix milliseconds, within 60 seconds of server time"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "description": "Ed25519 signature of the exact UTF-8 JSON array, lowercase hex (128 characters).",
+                    "example": "{{signature}}"
+                  }
+                },
+                "required": [
+                  "deviceId",
+                  "timestamp",
+                  "signature"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/devices/unpair": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Signed mobile unpair",
+        "operationId": "post__api_v1_devices_unpair",
+        "description": "Sign exact JSON.stringify([\"sso-unpair-v1\", deviceId, timestamp]) using the device private Ed25519 key. timestamp is milliseconds within ±60 seconds. Revokes device pairing and rejects pending challenges; clear local keys only after server success.",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "deviceId": {
+                    "type": "string",
+                    "description": "Registered device UUID",
+                    "example": "{{deviceId}}"
+                  },
+                  "timestamp": {
+                    "type": "integer",
+                    "description": "Unix milliseconds, within 60 seconds of server time"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "description": "Ed25519 signature of the exact UTF-8 JSON array, lowercase hex (128 characters).",
+                    "example": "{{signature}}"
+                  }
+                },
+                "required": [
+                  "deviceId",
+                  "timestamp",
+                  "signature"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Own SSO sessions and connected apps",
+        "operationId": "get__api_v1_sessions",
+        "description": "Latest 100 sessions; current flag identifies this browser. Apps are derived from linked audit records; older sessions may have no app linkage. User-Agent is self-reported; private/localhost IPs do not identify a city. sessionToken is never returned.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Database UUID; distinct from OAuth client_id.",
+                            "example": "{{id}}"
+                          },
+                          "ipAddress": {
+                            "type": "string"
+                          },
+                          "userAgent": {
+                            "type": "string"
+                          },
+                          "deviceInfo": {
+                            "type": "string"
+                          },
+                          "mfaVerified": {
+                            "type": "boolean"
+                          },
+                          "isActive": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "lastActiveAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "expiresAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "revokedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "current": {
+                            "type": "boolean"
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "agent": {
+                            "type": "object",
+                            "properties": {
+                              "browser": {
+                                "type": "string"
+                              },
+                              "os": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "network": {
+                            "type": "string"
+                          },
+                          "apps": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "Revoke own session(s)",
+        "operationId": "delete__api_v1_sessions",
+        "description": "Use {id} for one own session or {others:true} for all except current. Revokes linked OAuth tokens when consent/session linkage exists and records audit. Current-session revoke clears cookie. Dashboard checks tokens every 15 seconds; this is polling, not OIDC back-channel logout.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "current": {
+                      "type": "boolean"
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Database UUID; distinct from OAuth client_id.",
+                    "example": "{{id}}"
+                  },
+                  "others": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/activity": {
+      "get": {
+        "tags": [
+          "Activity"
+        ],
+        "summary": "Audit history with pagination",
+        "operationId": "get__api_v1_activity",
+        "description": "25 events per page. Default is own account; scope=all requires ADMIN. Raw metadata and token values excluded.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mine",
+                "all"
+              ],
+              "default": "mine"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Database UUID; distinct from OAuth client_id.",
+                            "example": "{{id}}"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "action": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "ipAddress": {
+                            "type": "string"
+                          },
+                          "userAgent": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "user": {
+                            "type": "object",
+                            "properties": {
+                              "username": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "client": {
+                            "type": "object",
+                            "properties": {
+                              "clientName": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "page": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/preferences": {
+      "get": {
+        "tags": [
+          "Preferences"
+        ],
+        "summary": "Read own settings",
+        "operationId": "get__api_v1_settings_preferences",
+        "description": "Account-scoped. GET may return null before first save. PUT normalizes defaults, clamps numeric values (sidebar 180–420, motion 100–400, token TTL 300–3600, challenge 30–300 seconds), and ignores unknown fields.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "settings": {
+                      "type": "object",
+                      "properties": {
+                        "sidebarWidth": {
+                          "type": "integer"
+                        },
+                        "sidebarCollapsed": {
+                          "type": "boolean"
+                        },
+                        "density": {
+                          "type": "string",
+                          "enum": [
+                            "compact",
+                            "comfortable"
+                          ]
+                        },
+                        "contentWidth": {
+                          "type": "string",
+                          "enum": [
+                            "wide",
+                            "focused"
+                          ]
+                        },
+                        "stickyHeader": {
+                          "type": "boolean"
+                        },
+                        "contrast": {
+                          "type": "string",
+                          "enum": [
+                            "standard",
+                            "high"
+                          ]
+                        },
+                        "accent": {
+                          "type": "string",
+                          "enum": [
+                            "neutral",
+                            "indigo",
+                            "emerald"
+                          ]
+                        },
+                        "animationsEnabled": {
+                          "type": "boolean"
+                        },
+                        "motionDuration": {
+                          "type": "integer"
+                        },
+                        "respectReducedMotion": {
+                          "type": "boolean"
+                        },
+                        "accessTokenTtl": {
+                          "type": "integer",
+                          "minimum": 300,
+                          "maximum": 3600
+                        },
+                        "challengeTimeout": {
+                          "type": "integer",
+                          "minimum": 30,
+                          "maximum": 300
+                        }
+                      },
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Preferences"
+        ],
+        "summary": "Save own settings",
+        "operationId": "put__api_v1_settings_preferences",
+        "description": "Account-scoped. GET may return null before first save. PUT normalizes defaults, clamps numeric values (sidebar 180–420, motion 100–400, token TTL 300–3600, challenge 30–300 seconds), and ignores unknown fields.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "settings": {
+                      "type": "object",
+                      "properties": {
+                        "sidebarWidth": {
+                          "type": "integer"
+                        },
+                        "sidebarCollapsed": {
+                          "type": "boolean"
+                        },
+                        "density": {
+                          "type": "string",
+                          "enum": [
+                            "compact",
+                            "comfortable"
+                          ]
+                        },
+                        "contentWidth": {
+                          "type": "string",
+                          "enum": [
+                            "wide",
+                            "focused"
+                          ]
+                        },
+                        "stickyHeader": {
+                          "type": "boolean"
+                        },
+                        "contrast": {
+                          "type": "string",
+                          "enum": [
+                            "standard",
+                            "high"
+                          ]
+                        },
+                        "accent": {
+                          "type": "string",
+                          "enum": [
+                            "neutral",
+                            "indigo",
+                            "emerald"
+                          ]
+                        },
+                        "animationsEnabled": {
+                          "type": "boolean"
+                        },
+                        "motionDuration": {
+                          "type": "integer"
+                        },
+                        "respectReducedMotion": {
+                          "type": "boolean"
+                        },
+                        "accessTokenTtl": {
+                          "type": "integer",
+                          "minimum": 300,
+                          "maximum": 3600
+                        },
+                        "challengeTimeout": {
+                          "type": "integer",
+                          "minimum": 30,
+                          "maximum": 300
+                        }
+                      },
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "settings": {
+                    "type": "object",
+                    "properties": {
+                      "sidebarWidth": {
+                        "type": "integer"
+                      },
+                      "sidebarCollapsed": {
+                        "type": "boolean"
+                      },
+                      "density": {
+                        "type": "string",
+                        "enum": [
+                          "compact",
+                          "comfortable"
+                        ]
+                      },
+                      "contentWidth": {
+                        "type": "string",
+                        "enum": [
+                          "wide",
+                          "focused"
+                        ]
+                      },
+                      "stickyHeader": {
+                        "type": "boolean"
+                      },
+                      "contrast": {
+                        "type": "string",
+                        "enum": [
+                          "standard",
+                          "high"
+                        ]
+                      },
+                      "accent": {
+                        "type": "string",
+                        "enum": [
+                          "neutral",
+                          "indigo",
+                          "emerald"
+                        ]
+                      },
+                      "animationsEnabled": {
+                        "type": "boolean"
+                      },
+                      "motionDuration": {
+                        "type": "integer"
+                      },
+                      "respectReducedMotion": {
+                        "type": "boolean"
+                      },
+                      "accessTokenTtl": {
+                        "type": "integer",
+                        "minimum": 300,
+                        "maximum": 3600
+                      },
+                      "challengeTimeout": {
+                        "type": "integer",
+                        "minimum": 30,
+                        "maximum": 300
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "settings"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "tags": [
+          "Administration"
+        ],
+        "summary": "User directory",
+        "operationId": "get__api_v1_admin_users",
+        "description": "Requires ADMIN. Devices include revoked records; count is not online presence.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "ADMIN",
+                "USER"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "users": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Database UUID; distinct from OAuth client_id.",
+                            "example": "{{id}}"
+                          },
+                          "username": {
+                            "type": "string"
+                          },
+                          "email": {
+                            "type": "string"
+                          },
+                          "fullName": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "USER",
+                              "ADMIN"
+                            ]
+                          },
+                          "avatarUrl": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "devices": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Database UUID; distinct from OAuth client_id.",
+                                  "example": "{{id}}"
+                                },
+                                "deviceName": {
+                                  "type": "string"
+                                },
+                                "isVerified": {
+                                  "type": "boolean"
+                                },
+                                "lastUsedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                "publicKey": {
+                                  "type": "string",
+                                  "description": "ed25519: followed by 64 lowercase hex characters"
+                                },
+                                "createdAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              }
+                            }
+                          },
+                          "_count": {
+                            "type": "object",
+                            "properties": {
+                              "devices": {
+                                "type": "integer"
+                              },
+                              "userSessions": {
+                                "type": "integer"
+                              },
+                              "tokens": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Administration"
+        ],
+        "summary": "Create account",
+        "operationId": "post__api_v1_admin_users",
+        "description": "Requires ADMIN. Username/email normalized to lowercase.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "USER",
+                            "ADMIN"
+                          ]
+                        },
+                        "avatarUrl": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict or request already consumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "writeOnly": true
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "ADMIN",
+                      "USER"
+                    ],
+                    "default": "USER"
+                  }
+                },
+                "required": [
+                  "username",
+                  "email",
+                  "fullName",
+                  "password"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Administration"
+        ],
+        "summary": "Edit account or reset password",
+        "operationId": "put__api_v1_admin_users",
+        "description": "Requires ADMIN. reset_password requires password length >=6. update edits profile fields.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "USER",
+                            "ADMIN"
+                          ]
+                        },
+                        "avatarUrl": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict or request already consumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Database UUID; distinct from OAuth client_id.",
+                    "example": "{{id}}"
+                  },
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "ADMIN",
+                      "USER"
+                    ]
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "writeOnly": true
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "update",
+                      "reset_password"
+                    ]
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Administration"
+        ],
+        "summary": "Delete account",
+        "operationId": "delete__api_v1_admin_users",
+        "description": "Requires ADMIN. Destructive account deletion.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/clients": {
+      "get": {
+        "tags": [
+          "Administration"
+        ],
+        "summary": "List owned OAuth clients",
+        "operationId": "get__api_v1_admin_clients",
+        "description": "Requires ADMIN. Only clients owned by current account; secret hash excluded.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clients": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Database UUID; distinct from OAuth client_id.",
+                            "example": "{{id}}"
+                          },
+                          "clientId": {
+                            "type": "string"
+                          },
+                          "clientName": {
+                            "type": "string"
+                          },
+                          "redirectUris": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "allowedScopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "isPublic": {
+                            "type": "boolean"
+                          },
+                          "hasSecret": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Administration"
+        ],
+        "summary": "Register OAuth client",
+        "operationId": "post__api_v1_admin_clients",
+        "description": "Requires ADMIN. Owner assigned automatically. Confidential raw secret returned once; public clients have no secret.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "client": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "clientId": {
+                          "type": "string"
+                        },
+                        "clientName": {
+                          "type": "string"
+                        },
+                        "redirectUris": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "allowedScopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "isPublic": {
+                          "type": "boolean"
+                        },
+                        "hasSecret": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "rawClientSecret": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "clientName": {
+                    "type": "string"
+                  },
+                  "clientId": {
+                    "type": "string"
+                  },
+                  "redirectUris": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "allowedScopes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "isPublic": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "clientName",
+                  "redirectUris"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Administration"
+        ],
+        "summary": "Edit owned client or rotate secret",
+        "operationId": "put__api_v1_admin_clients",
+        "description": "Requires ADMIN. Ownership enforced. regenerate_secret unsupported for public clients. Switching public/confidential may create/remove secret.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "client": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Database UUID; distinct from OAuth client_id.",
+                          "example": "{{id}}"
+                        },
+                        "clientId": {
+                          "type": "string"
+                        },
+                        "clientName": {
+                          "type": "string"
+                        },
+                        "redirectUris": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "allowedScopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "isPublic": {
+                          "type": "boolean"
+                        },
+                        "hasSecret": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "rawClientSecret": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Database UUID; distinct from OAuth client_id.",
+                    "example": "{{id}}"
+                  },
+                  "clientName": {
+                    "type": "string"
+                  },
+                  "clientId": {
+                    "type": "string"
+                  },
+                  "redirectUris": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "allowedScopes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "isPublic": {
+                    "type": "boolean"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "update",
+                      "regenerate_secret"
+                    ]
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Administration"
+        ],
+        "summary": "Delete owned OAuth client",
+        "operationId": "delete__api_v1_admin_clients",
+        "description": "Requires ADMIN. Only owner can delete.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authentication/proof",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient role or ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Record not found or not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/callback/custom-sso": {
+      "get": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Diagnostic OAuth callback",
+        "operationId": "get__api_auth_callback_custom_sso",
+        "description": "Development helper only: echoes code/state as JSON. Does not validate relying-party state or exchange tokens; never use as a production application session callback.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, expired request, or invalid state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

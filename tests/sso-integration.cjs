@@ -1,0 +1,97 @@
+const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const {createRequire} = require('node:module');
+const path = require('node:path');
+const web=path.resolve(__dirname, '..'), mobile=path.resolve(web, '../expo-native');
+const wr=createRequire(web+'/package.json'), mr=createRequire(mobile+'/package.json');
+wr('@next/env').loadEnvConfig(web);
+const {PrismaClient}=wr('./lib/generated/prisma'); const db=new PrismaClient();
+const babel=mr('@babel/core'); const data=new Map();
+const store={getItemAsync:async k=>data.get(k)||null,setItemAsync:async(k,v)=>data.set(k,v),deleteItemAsync:async k=>data.delete(k)};
+function load(file,overrides){const module={exports:{}}; const src=babel.transformFileSync(mobile+'/'+file,{configFile:false,babelrc:false,plugins:[mr.resolve('@babel/plugin-transform-modules-commonjs')]}).code; vm.runInNewContext(src,{module,exports:module.exports,require:n=>overrides[n]||mr(n),Uint8Array,Date,URL,console,fetch,AbortSignal});return module.exports;}
+const keys=load('src/services/keyStore.js',{'expo-secure-store':store,'expo-crypto':{getRandomValues:a=>crypto.getRandomValues(a)}});
+const api=load('src/services/api.js',{'expo-secure-store':store,'./keyStore':keys});
+const base=process.env.SSO_TEST_BASE_URL || 'http://127.0.0.1:3000'; let checks=0;
+async function req(path,{method='GET',body,cookie}={}){const r=await fetch(base+path,{method,headers:{'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(30000)});let bodyData;try{bodyData=await r.json()}catch{} return {status:r.status,body:bodyData,cookie:r.headers.get('set-cookie')?.split(';')[0]};}
+function check(value,message){assert.ok(value,message);checks++; console.log('PASS '+message);}
+let uid,cid;
+(async()=>{try{
+ for(const path of ['/api/v1/admin/users','/api/v1/admin/clients','/api/v1/auth/me','/api/v1/devices/pair'])check((await req(path)).status===401,'unauthenticated blocked: '+path);
+ const suffix=crypto.randomUUID();const password=crypto.randomBytes(20).toString('hex');
+ const user=await db.user.create({data:{username:'sso-check-'+suffix,email:suffix+'@example.invalid',fullName:'Temporary SSO integration check',passwordHash:await wr('bcryptjs').hash(password,4),role:'USER'}});uid=user.id;
+ const client=await db.oAuthClient.create({data:{clientId:'sso-check-'+suffix,clientName:'Integration check',redirectUris:['http://localhost:3999/callback'],isPublic:true}});cid=client.id;
+ const token=crypto.randomBytes(32).toString('hex'); await db.userSession.create({data:{userId:uid,sessionToken:token,expiresAt:new Date(Date.now()+600000)}});const cookie='sso_session='+token;
+ check((await req('/api/v1/admin/users',{cookie})).status===403,'standard user denied admin access');
+ const sessionResponse=await req('/api/v1/devices/pair',{cookie});check(sessionResponse.body.user.id===uid,'pair QR belongs to signed-in user');const qr=sessionResponse.body.qrPayload;
+ check(!qr.endpoint.includes('localhost')&&!qr.endpoint.includes('/api/'),'mobile QR uses LAN origin');
+ const identity=await keys.getOrCreateDeviceKeys(); const concurrent=await Promise.all([keys.getPublicKey(),keys.getDeviceId()]);check(concurrent[0]===identity.publicKey&&concurrent[1]===identity.deviceId,'mobile key identity is stable');
+ const info=await api.pairDeviceWithSSO({...qr,endpoint:base+'/api/v1/devices/pair',deviceName:'Temporary integration device',publicKey:identity.publicKey,deviceId:identity.deviceId,pushToken:null});
+ check(info.deviceId&&info.endpoint===base,'real mobile API pairs using legacy full URL');
+ check((await db.userDevice.findUnique({where:{id:info.deviceId}})).fcmToken==='','missing push token is not fabricated');
+ const replay=await req('/api/v1/devices/pair',{method:'POST',body:{...qr,deviceName:'Replay',publicKey:identity.publicKey}});check(replay.status>=400,'pairing QR token cannot be reused');
+ const verifier=crypto.randomBytes(32).toString('base64url');
+ const codeChallenge=crypto.createHash('sha256').update(verifier).digest('base64url');
+ await req('/api/v1/settings/preferences',{method:'PUT',cookie,body:{settings:{accessTokenTtl:900,challengeTimeout:45}}});
+ async function loginChallenge(){const session=await db.authSession.create({data:{clientId:cid,userId:uid,state:crypto.randomUUID(),redirectUri:'http://localhost:3999/callback',codeChallenge,codeChallengeMethod:'S256',expiresAt:new Date(Date.now()+600000)}});const login=await req('/api/v1/auth/login',{method:'POST',body:{username:user.username,password,sessionId:session.id}});check(login.body?.status==='CHALLENGE_REQUIRED','login requires real device challenge');const challenge=await db.authChallenge.findUnique({where:{id:login.body.challengeId}});return {challenge,cookie:login.cookie};}
+ let login=await loginChallenge();let ch=login.challenge;
+ check(Math.abs((ch.expiresAt-Date.now())/1000-45)<10,'saved 2FA timeout enforced by login');
+ const pending=await api.fetchPendingChallenges(info);
+ check(pending.find(c=>c.id===ch.id)?.matchingOptions.includes(Number(ch.challengeCode)),'mobile options include the exact web matching code');
+ check(pending.find(c=>c.id===ch.id)?.expiresAt===ch.expiresAt.toISOString(),'mobile and web use the same challenge expiry');check(pending.some(c=>c.id===ch.id)&&!('challengeCode' in pending[0]),'signed mobile polling receives challenge without answer');
+ check((await req('/api/v1/devices/challenges',{method:'POST',body:{deviceId:info.deviceId,timestamp:Date.now(),signature:'fake'}})).status===401,'forged polling signature rejected');
+ check((await req('/api/v1/auth/challenge-status?id='+ch.id)).status===401,'other browser cannot read challenge or obtain session');
+ check((await req('/api/v1/auth/challenge-status',{method:'POST',body:{challengeId:ch.id,action:'APPROVE',deviceId:info.deviceId,signature:'fake'}})).status===400,'missing number rejected');
+ check((await req('/api/v1/auth/challenge-status',{method:'POST',body:{challengeId:ch.id,action:'APPROVE',selectedCode:ch.challengeCode,deviceId:info.deviceId,signature:'0'.repeat(128)}})).status===401,'forged approval signature rejected');
+ const proof=await keys.signChallenge(ch.id,ch.challengeCode,ch.nonce,info.deviceId);
+ const approve={endpoint:base,challengeId:ch.id,matchingCode:ch.challengeCode,deviceId:info.deviceId,signature:proof.signature};
+ const results=await Promise.allSettled([api.verify2FAChallenge(approve),api.verify2FAChallenge(approve)]);check(results.filter(r=>r.status==='fulfilled').length===1,'concurrent approval succeeds exactly once');
+ const browser=await req('/api/v1/auth/challenge-status?id='+ch.id,{cookie:login.cookie});check(browser.body.status==='APPROVED'&&browser.cookie?.startsWith('sso_session='),'initiating browser receives MFA session');
+ const current=await req('/api/v1/auth/me',{cookie:browser.cookie});check(current.body.user.id===uid,'MFA session resolves correct user');
+ const consentBody={sessionId:ch.authSessionId,action:'allow'};
+ check((await req('/api/v1/oauth/consent',{method:'POST',body:consentBody})).status===401,'consent cannot bypass login or MFA');
+ const consent=await req('/api/v1/oauth/consent',{method:'POST',body:consentBody,cookie:browser.cookie});check(consent.body.status==='APPROVED','authenticated browser grants OAuth consent');
+ const exchange={grant_type:'authorization_code',code:consent.body.authorizationCode,redirect_uri:'http://localhost:3999/callback',client_id:client.clientId,code_verifier:verifier};
+ check((await req('/api/v1/oauth/token',{method:'POST',body:{...exchange,code_verifier:'wrong'}})).status===400,'incorrect PKCE verifier rejected');
+ const issued=await req('/api/v1/oauth/token',{method:'POST',body:exchange});check(issued.body.expires_in===900,'saved access token TTL enforced by server');check(issued.status===200&&!!issued.body.access_token&&!!issued.body.id_token,'authorization code and PKCE issue SSO tokens');
+ const profile=await fetch(base+'/api/v1/oauth/userinfo',{headers:{Authorization:'Bearer '+issued.body.access_token}});check(profile.status===200&&(await profile.json()).sub===uid,'SSO access token returns correct userinfo');
+ check((await req('/api/v1/oauth/token',{method:'POST',body:exchange})).status===400,'authorization code replay rejected');
+ const overview=await api.fetchAccountOverview(info);
+ check(overview.user.id===uid,'device account endpoint resolves only paired account');
+ check(overview.apps.some(a=>a.id===cid&&a.scopes.includes('openid')),'mobile receives actual app and granted scopes');
+ check(overview.history.length>0&&overview.sessions.length>0,'mobile receives actual history and sessions');
+ check(!JSON.stringify(overview).includes(issued.body.access_token)&&!JSON.stringify(overview).includes(issued.body.refresh_token),'mobile overview never exposes bearer tokens');
+ check((await req('/api/v1/devices/account',{method:'POST',body:{deviceId:info.deviceId,timestamp:Date.now(),signature:'fake'}})).status===401,'forged account request denied');
+
+ login=await loginChallenge();ch=login.challenge;const wrong=String((Number(ch.challengeCode)%90)+10);const wrongProof=await keys.signChallenge(ch.id,wrong,ch.nonce,info.deviceId);
+ await assert.rejects(()=>api.verify2FAChallenge({endpoint:base,challengeId:ch.id,matchingCode:wrong,deviceId:info.deviceId,signature:wrongProof.signature}));check((await db.authChallenge.findUnique({where:{id:ch.id}})).status==='REJECTED','wrong number rejects challenge on server');
+ login=await loginChallenge();ch=login.challenge; const reject=await keys.signChallenge(ch.id,'',ch.nonce,info.deviceId,'REJECT');check((await api.verify2FAChallenge({endpoint:base,challengeId:ch.id,matchingCode:'',decision:'REJECTED',...reject})).status==='REJECTED','signed rejection works');
+ login=await loginChallenge();ch=login.challenge;
+ const altered=await keys.signChallenge(ch.id,ch.challengeCode,'wrong-nonce',info.deviceId);
+ check((await req('/api/v1/auth/challenge-status',{method:'POST',body:{challengeId:ch.id,action:'APPROVE',selectedCode:ch.challengeCode,...altered}})).status===401,'wrong nonce signature rejected');
+ await db.authChallenge.update({where:{id:ch.id},data:{expiresAt:new Date(Date.now()-1000)}});
+ const expired=await keys.signChallenge(ch.id,ch.challengeCode,ch.nonce,info.deviceId);
+ check((await req('/api/v1/auth/challenge-status',{method:'POST',body:{challengeId:ch.id,action:'APPROVE',selectedCode:ch.challengeCode,...expired}})).status===400,'expired challenge rejected');
+ check((await req('/api/v1/auth/recovery',{method:'POST',body:{action:'generate',password}})).status===401,'recovery generation requires login');
+ check((await req('/api/v1/auth/recovery',{method:'POST',cookie,body:{action:'generate',password:'wrong'}})).status===401,'recovery generation requires correct password');
+ const first=await req('/api/v1/auth/recovery',{method:'POST',cookie,body:{action:'generate',password}});
+ check(first.body?.codes?.length===10,'ten recovery codes generated');
+ const second=await req('/api/v1/auth/recovery',{method:'POST',cookie,body:{action:'generate',password}});
+ check(second.body?.codes?.length===10,'recovery codes can be rotated');
+ login=await loginChallenge();ch=login.challenge;
+ check((await req('/api/v1/auth/recovery',{method:'POST',cookie:login.cookie,body:{challengeId:ch.id,code:first.body.codes[0]}})).status===400,'old recovery set is revoked');
+ const recovery=await Promise.all([1,2].map(()=>req('/api/v1/auth/recovery',{method:'POST',cookie:login.cookie,body:{challengeId:ch.id,code:second.body.codes[0]}})));
+ check(recovery.filter(r=>r.status===200).length===1,'concurrent recovery succeeds exactly once');
+ login=await loginChallenge();ch=login.challenge;
+ check((await req('/api/v1/auth/recovery',{method:'POST',cookie:login.cookie,body:{challengeId:ch.id,code:second.body.codes[0]}})).status===400,'used recovery code cannot be reused');
+ await api.clearPairingInfo();
+ check(!(await db.userDevice.findUnique({where:{id:info.deviceId}})).isVerified,'mobile unpair revokes server device');
+ check(await api.getStoredPairingInfo()===null,'mobile unpair clears local pairing');
+ await assert.rejects(()=>api.fetchPendingChallenges(info));check(true,'revoked device cannot poll');
+ await db.userSession.update({where:{sessionToken:token},data:{expiresAt:new Date(Date.now()-1000)}});
+ check((await req('/api/v1/auth/me',{cookie})).status===401,'expired browser session denied');
+ console.log('ALL '+checks+' INTEGRATION CHECKS PASSED');
+ } finally {if(uid)await db.user.delete({where:{id:uid}});if(cid)await db.oAuthClient.delete({where:{id:cid}});await db.$disconnect();console.log('Temporary fixtures removed');}})().catch(e=>{console.error(e);process.exitCode=1;});
+
+

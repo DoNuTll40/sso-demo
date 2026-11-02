@@ -1,0 +1,2064 @@
+{
+  "info": {
+    "name": "SSO Core — Complete API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Generated from docs/openapi.json. Read postman/README.md before use. Do not Run All: administration, revocation, secret rotation and deletion mutate data. Start OAuth in a browser for real callback testing. Cookie jar holds HttpOnly cookies. Mobile requests require real Ed25519 signatures; no bypass exists."
+  },
+  "item": [
+    {
+      "name": "Discovery",
+      "item": [
+        {
+          "name": "OIDC discovery",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/.well-known/openid-configuration",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                ".well-known",
+                "openid-configuration"
+              ],
+              "query": []
+            },
+            "description": "Currently advertises HS256 ID tokens and S256 PKCE. Back-channel logout is not advertised or implemented.\n\n"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Discovery CORS preflight",
+          "request": {
+            "method": "OPTIONS",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/.well-known/openid-configuration",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                ".well-known",
+                "openid-configuration"
+              ],
+              "query": []
+            },
+            "description": "\n\n"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Public signing keys",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/.well-known/jwks.json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                ".well-known",
+                "jwks.json"
+              ],
+              "query": []
+            },
+            "description": "Exports configured RSA public key only. May return an empty keys array. These RSA keys do not verify the current HS256 ID tokens.\n\n"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Discovery CORS preflight",
+          "request": {
+            "method": "OPTIONS",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/.well-known/jwks.json",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                ".well-known",
+                "jwks.json"
+              ],
+              "query": []
+            },
+            "description": "\n\n"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OAuth",
+      "item": [
+        {
+          "name": "Start Authorization Code flow",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/oauth/authorize?client_id={{clientId}}&redirect_uri={{redirectUri}}&state={{state}}&scope=openid profile email&code_challenge={{codeChallenge}}&code_challenge_method=S256",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "oauth",
+                "authorize"
+              ],
+              "query": [
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}",
+                  "disabled": false,
+                  "description": ""
+                },
+                {
+                  "key": "redirect_uri",
+                  "value": "{{redirectUri}}",
+                  "disabled": false,
+                  "description": ""
+                },
+                {
+                  "key": "state",
+                  "value": "{{state}}",
+                  "disabled": false,
+                  "description": ""
+                },
+                {
+                  "key": "response_type",
+                  "value": "code",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "scope",
+                  "value": "openid profile email",
+                  "disabled": false,
+                  "description": "Space-separated scopes"
+                },
+                {
+                  "key": "code_challenge",
+                  "value": "{{codeChallenge}}",
+                  "disabled": false,
+                  "description": ""
+                },
+                {
+                  "key": "code_challenge_method",
+                  "value": "S256",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Browser navigation endpoint. Validates registered redirect URI and scopes; public clients require PKCE. Creates an AuthSession and redirects to login/consent. state must be random, stored by the client, and verified at callback. Use a new verifier (43–128 chars) per attempt; S256 = base64url(SHA256(verifier)).\n\n"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CryptoJS = require('crypto-js');",
+                  "const verifier = pm.variables.replaceIn('{{$guid}}{{$guid}}').replace(/-/g,'');",
+                  "pm.environment.set('codeVerifier', verifier);",
+                  "pm.environment.set('state', pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.environment.set('codeChallenge', CryptoJS.SHA256(verifier).toString(CryptoJS.enc.Base64).replace(/=/g,'').replace(/\\+/g,'-').replace(/\\//g,'_')); "
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Exchange code or rotate refresh token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/oauth/token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "oauth",
+                "token"
+              ],
+              "query": []
+            },
+            "description": "Accepts JSON and application/x-www-form-urlencoded. authorization_code requires code, redirect_uri and client identity; code_verifier required if PKCE was used. Confidential clients require secret via Basic or body. refresh_token requires refresh_token and matching client credentials; rotates refresh tokens (replace stored values). ID token is returned on authorization_code, not refresh. Authorization codes are single-use.\n\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"authorization_code\",\n  \"code\": \"{{authorizationCode}}\",\n  \"redirect_uri\": \"{{redirectUri}}\",\n  \"client_id\": \"{{clientId}}\",\n  \"client_secret\": \"{{clientSecret}}\",\n  \"code_verifier\": \"{{codeVerifier}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Rotate refresh token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/oauth/token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "oauth",
+                "token"
+              ],
+              "query": []
+            },
+            "description": "Accepts JSON and application/x-www-form-urlencoded. authorization_code requires code, redirect_uri and client identity; code_verifier required if PKCE was used. Confidential clients require secret via Basic or body. refresh_token requires refresh_token and matching client credentials; rotates refresh tokens (replace stored values). ID token is returned on authorization_code, not refresh. Authorization codes are single-use.\n\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"refresh_token\",\n  \"refresh_token\": \"{{refreshToken}}\",\n  \"client_id\": \"{{clientId}}\",\n  \"client_secret\": \"{{clientSecret}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Read profile from access token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/oauth/userinfo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "oauth",
+                "userinfo"
+              ],
+              "query": []
+            },
+            "description": "Validates signature, token record, expiry and revocation; fields depend on granted scopes.\n\n",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Read consent request",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/oauth/consent?session_id={{sessionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "oauth",
+                "consent"
+              ],
+              "query": [
+                {
+                  "key": "session_id",
+                  "value": "{{sessionId}}",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Authenticated account must own the AuthSession. Previously approved means an earlier approval covers the requested scopes and same callback; currently still requires explicit confirmation.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Allow or deny access",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/oauth/consent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "oauth",
+                "consent"
+              ],
+              "query": []
+            },
+            "description": "Requires AWAITING_CONSENT and unexpired session owned by caller. allow produces code/state callback; deny produces error=access_denied callback. Navigate the browser to redirectUrl.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"allow\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Name of requesting application",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login-context?session_id={{sessionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login-context"
+              ],
+              "query": [
+                {
+                  "key": "session_id",
+                  "value": "{{sessionId}}",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Public, minimal app name only. Rejects expired/completed sessions; returns no account data.\n\n"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Verify password and start sign-in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "Omit session_id for direct SSO portal login. With verified device: returns challenge and sets sso_challenge; poll challenge-status. Without verified device: creates sso_session and returns next step. OAuth clients must begin at authorize; never fabricate an AuthSession.\n\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"session_id\": \"{{sessionId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Current signed-in account",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ],
+              "query": []
+            },
+            "description": "\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Log out current SSO browser",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ],
+              "query": []
+            },
+            "description": "Revokes current SSO session when present and deletes sso_session cookie. Idempotent. This endpoint does not itself implement back-channel logout.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Poll browser challenge and finish login",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/challenge-status?id={{challengeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "challenge-status"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{challengeId}}",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Poll every 2 seconds using the browser cookie from password step. On APPROVED sets sso_session and returns redirectUrl. Expired/rejected challenges require a fresh login.\n\n"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Devices",
+      "item": [
+        {
+          "name": "Approve or reject signed challenge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/challenge-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "challenge-status"
+              ],
+              "query": []
+            },
+            "description": "Ed25519 payload: JSON.stringify([\"sso-2fa-v1\", challengeId, nonce, deviceId, action, String(selectedCode ?? \"\")]). Nonce comes from signed device polling. Wrong matching code rejects the challenge. The browser code is never an authorization credential on its own. verify-2fa is an alias of challenge-status POST.\n\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\",\n  \"action\": \"APPROVE\",\n  \"selectedCode\": \"{{challengeCode}}\",\n  \"deviceId\": \"{{deviceId}}\",\n  \"signature\": \"{{signature}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Approve or reject signed challenge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices/verify-2fa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "verify-2fa"
+              ],
+              "query": []
+            },
+            "description": "Ed25519 payload: JSON.stringify([\"sso-2fa-v1\", challengeId, nonce, deviceId, action, String(selectedCode ?? \"\")]). Nonce comes from signed device polling. Wrong matching code rejects the challenge. The browser code is never an authorization credential on its own. verify-2fa is an alias of challenge-status POST.\n\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\",\n  \"action\": \"APPROVE\",\n  \"selectedCode\": \"{{challengeCode}}\",\n  \"deviceId\": \"{{deviceId}}\",\n  \"signature\": \"{{signature}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List devices and issue pairing QR",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices/pair",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "pair"
+              ],
+              "query": []
+            },
+            "description": "Returns all devices including revoked ones. Pairing token is one-use and valid 10 minutes. QR endpoint uses configured origin or development LAN IP. Treat token as sensitive.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Consume pairing QR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices/pair",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "pair"
+              ],
+              "query": []
+            },
+            "description": "Requires signed pairing token from authenticated browser. No session cookie required on phone. Missing/invalid Expo token stored as empty; registration alone does not prove online reachability.\n\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pairingToken\": \"{{pairingToken}}\",\n  \"userId\": \"{{userId}}\",\n  \"deviceName\": \"My phone\",\n  \"publicKey\": \"{{publicKey}}\",\n  \"pushToken\": \"\",\n  \"fcmToken\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Unpair or remove own device",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices/pair?id={{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "pair"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{id}}",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Verified device: mark unverified, clear push token, reject pending challenges and revoke device-linked sessions. Already unverified device: permanently remove record. Only owner may act.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Signed device challenge polling",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices/challenges",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "challenges"
+              ],
+              "query": []
+            },
+            "description": "Sign exact JSON.stringify([\"sso-poll-v1\", deviceId, timestamp]) using the device private Ed25519 key. timestamp is milliseconds within ±60 seconds. At most 5 live pending challenges; returns options, not the selected answer.\n\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"timestamp\": {{timestamp}},\n  \"signature\": \"{{signature}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Signed mobile account overview",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices/account",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "account"
+              ],
+              "query": []
+            },
+            "description": "Sign exact JSON.stringify([\"sso-account-v1\", deviceId, timestamp]) using the device private Ed25519 key. timestamp is milliseconds within ±60 seconds. Paired account only. Up to 100 active tokens aggregated into apps, 50 history events, 20 active sessions; bearer tokens excluded.\n\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"timestamp\": {{timestamp}},\n  \"signature\": \"{{signature}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Signed mobile unpair",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/devices/unpair",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "unpair"
+              ],
+              "query": []
+            },
+            "description": "Sign exact JSON.stringify([\"sso-unpair-v1\", deviceId, timestamp]) using the device private Ed25519 key. timestamp is milliseconds within ±60 seconds. Revokes device pairing and rejects pending challenges; clear local keys only after server success.\n\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"timestamp\": {{timestamp}},\n  \"signature\": \"{{signature}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Recovery",
+      "item": [
+        {
+          "name": "Generate or consume recovery codes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/recovery",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "recovery"
+              ],
+              "query": []
+            },
+            "description": "Two distinct bodies: {action:\"generate\",password} requires an authenticated session and correct password; creates 10 codes, shown once, replacing all old codes. {challengeId,code} requires password-step sso_challenge cookie; consumes code exactly once and approves pending challenge. Poll challenge-status afterward to finish login. Five failed recovery attempts per account in 15 minutes trigger 429.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"generate\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Use one recovery code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/recovery",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "recovery"
+              ],
+              "query": []
+            },
+            "description": "Two distinct bodies: {action:\"generate\",password} requires an authenticated session and correct password; creates 10 codes, shown once, replacing all old codes. {challengeId,code} requires password-step sso_challenge cookie; consumes code exactly once and approves pending challenge. Poll challenge-status afterward to finish login. Five failed recovery attempts per account in 15 minutes trigger 429.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\",\n  \"code\": \"{{recoveryCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sessions",
+      "item": [
+        {
+          "name": "Own SSO sessions and connected apps",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sessions"
+              ],
+              "query": []
+            },
+            "description": "Latest 100 sessions; current flag identifies this browser. Apps are derived from linked audit records; older sessions may have no app linkage. User-Agent is self-reported; private/localhost IPs do not identify a city. sessionToken is never returned.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Revoke own session(s)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sessions"
+              ],
+              "query": []
+            },
+            "description": "Use {id} for one own session or {others:true} for all except current. Revokes linked OAuth tokens when consent/session linkage exists and records audit. Current-session revoke clears cookie. Dashboard checks tokens every 15 seconds; this is polling, not OIDC back-channel logout.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Activity",
+      "item": [
+        {
+          "name": "Audit history with pagination",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/activity?scope=mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "scope",
+                  "value": "mine",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "25 events per page. Default is own account; scope=all requires ADMIN. Raw metadata and token values excluded.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Preferences",
+      "item": [
+        {
+          "name": "Read own settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "preferences"
+              ],
+              "query": []
+            },
+            "description": "Account-scoped. GET may return null before first save. PUT normalizes defaults, clamps numeric values (sidebar 180–420, motion 100–400, token TTL 300–3600, challenge 30–300 seconds), and ignores unknown fields.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Save own settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/settings/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "settings",
+                "preferences"
+              ],
+              "query": []
+            },
+            "description": "Account-scoped. GET may return null before first save. PUT normalizes defaults, clamps numeric values (sidebar 180–420, motion 100–400, token TTL 300–3600, challenge 30–300 seconds), and ignores unknown fields.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settings\": {\n    \"sidebarWidth\": 1,\n    \"sidebarCollapsed\": false,\n    \"density\": \"compact\",\n    \"contentWidth\": \"wide\",\n    \"stickyHeader\": false,\n    \"contrast\": \"standard\",\n    \"accent\": \"neutral\",\n    \"animationsEnabled\": false,\n    \"motionDuration\": 1,\n    \"respectReducedMotion\": false,\n    \"accessTokenTtl\": 300,\n    \"challengeTimeout\": 30\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Administration",
+      "item": [
+        {
+          "name": "User directory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "role",
+                  "value": "ALL",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Requires ADMIN. Devices include revoked records; count is not online presence.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Create account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ],
+              "query": []
+            },
+            "description": "Requires ADMIN. Username/email normalized to lowercase.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"email\": \"user@example.invalid\",\n  \"fullName\": \"Example User\",\n  \"password\": \"{{password}}\",\n  \"role\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Edit account or reset password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ],
+              "query": []
+            },
+            "description": "Requires ADMIN. reset_password requires password length >=6. update edits profile fields.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{id}}\",\n  \"fullName\": \"Example User\",\n  \"email\": \"user@example.invalid\",\n  \"role\": \"ADMIN\",\n  \"password\": \"{{password}}\",\n  \"action\": \"update\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Delete account",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/users?id={{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{id}}",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Requires ADMIN. Destructive account deletion.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List owned OAuth clients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "clients"
+              ],
+              "query": []
+            },
+            "description": "Requires ADMIN. Only clients owned by current account; secret hash excluded.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Register OAuth client",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "clients"
+              ],
+              "query": []
+            },
+            "description": "Requires ADMIN. Owner assigned automatically. Confidential raw secret returned once; public clients have no secret.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientName\": \"Example application\",\n  \"clientId\": \"\",\n  \"redirectUris\": [\n    \"{{redirectUri}}\"\n  ],\n  \"allowedScopes\": [\n    \"openid\",\n    \"profile\",\n    \"email\"\n  ],\n  \"isPublic\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Edit owned client or rotate secret",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/clients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "clients"
+              ],
+              "query": []
+            },
+            "description": "Requires ADMIN. Ownership enforced. regenerate_secret unsupported for public clients. Switching public/confidential may create/remove secret.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{id}}\",\n  \"clientName\": \"Example application\",\n  \"clientId\": \"\",\n  \"redirectUris\": [\n    \"{{redirectUri}}\"\n  ],\n  \"allowedScopes\": [\n    \"openid\",\n    \"profile\",\n    \"email\"\n  ],\n  \"isPublic\": false,\n  \"action\": \"update\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Delete owned OAuth client",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/clients?id={{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "clients"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{id}}",
+                  "disabled": false,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Requires ADMIN. Only owner can delete.\n\nAuthentication: sso_session HttpOnly cookie. Use Postman cookie jar after login. ADMIN endpoints require an admin account."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Diagnostics",
+      "item": [
+        {
+          "name": "Diagnostic OAuth callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/callback/custom-sso",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "callback",
+                "custom-sso"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{authorizationCode}}",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "state",
+                  "value": "{{state}}",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "error",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                },
+                {
+                  "key": "error_description",
+                  "value": "",
+                  "disabled": true,
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Development helper only: echoes code/state as JSON. Does not validate relying-party state or exchange tokens; never use as a production application session callback.\n\n"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d; try { d = pm.response.json(); } catch {}",
+                  "if (d && pm.response.code < 300) {",
+                  " const mappings = {sessionId:'sessionId',challengeId:'challengeId',challengeCode:'challengeCode',authorizationCode:'authorizationCode',access_token:'accessToken',refresh_token:'refreshToken',id_token:'idToken'};",
+                  " Object.entries(mappings).forEach(([k,v])=>{if(d[k])pm.environment.set(v,d[k]);});",
+                  " if(d.qrPayload){pm.environment.set('pairingToken',d.qrPayload.pairingToken);pm.environment.set('userId',d.qrPayload.userId);}",
+                  " if(d.device?.id)pm.environment.set('deviceId',d.device.id);",
+                  " if(d.redirectUrl){try{const u=new URL(d.redirectUrl,pm.environment.get('baseUrl'));if(u.searchParams.get('code'))pm.environment.set('authorizationCode',u.searchParams.get('code'));}catch{}}",
+                  "}",
+                  "pm.test('No server error',()=>pm.expect(pm.response.code).to.be.below(500));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ]
+}
